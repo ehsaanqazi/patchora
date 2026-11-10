@@ -192,7 +192,7 @@ async def validating(ctx: NodeContext) -> Transition:
     if ctx.deps.issue_source is None:
         problems.append(ctx.deps.issue_source_error or "Sentry is not configured.")
     if ctx.deps.llm is None:
-        problems.append(ctx.deps.llm_error or "Groq is not configured.")
+        problems.append(ctx.deps.llm_error or "No LLM provider is configured.")
     if problems:
         return Transition(RunState.FAILED, "Configuration incomplete", RunOutcome.ERROR,
                           error=" ".join(problems), event_type="run_failed", message=" ".join(problems))
@@ -980,5 +980,8 @@ STEP_NAMES: dict[RunState, str] = {
 
 def cost_for(ctx: NodeContext) -> float | None:
     s = ctx.deps.settings
+    # Pricing is only configured for Groq (GROQ_PRICE_*); other providers report no cost rather than a guess.
+    if getattr(ctx.deps.llm, "provider", "groq") != "groq":
+        return None
     return estimate_cost(ctx.usage["prompt"], ctx.usage["completion"], s.groq_price_input_per_million,
                          s.groq_price_output_per_million)

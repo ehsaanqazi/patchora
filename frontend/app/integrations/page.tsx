@@ -1,11 +1,11 @@
 "use client";
 
-import { Eraser, KeyRound, Plug, Save } from "lucide-react";
+import { BrainCircuit, Eraser, KeyRound, Plug, Save } from "lucide-react";
 import { useState } from "react";
 
 import { useApp } from "@/components/AppProviders";
 import {
-  Badge, Button, Card, ConfirmDialog, ErrorState, Field, InlineAlert, Input, LoadingRows, PageHeader, Textarea,
+  Badge, Button, Card, ConfirmDialog, ErrorState, Field, InlineAlert, Input, LoadingRows, PageHeader, Select, Textarea,
 } from "@/components/ui";
 import { useAction, useApi } from "@/hooks/useApi";
 import { api, type ConnectionTestResult, type IntegrationOut } from "@/lib/api";
@@ -14,7 +14,12 @@ import { formatDate } from "@/lib/format";
 type FieldOut = IntegrationOut["fields"][number];
 
 const DESCRIPTIONS: Record<string, string> = {
-  groq: "LLM inference for diagnosis, patch planning and patch generation.",
+  groq: "Fast hosted open models through Groq.",
+  anthropic: "Claude models through the Anthropic API.",
+  openai: "OpenAI models (or any OpenAI-compatible endpoint via Base URL).",
+  deepseek: "DeepSeek models through the DeepSeek API.",
+  gemini: "Google Gemini models through Gemini's OpenAI-compatible endpoint.",
+  bedrock: "Any Bedrock chat model (Claude, Llama, Mistral, Nova…) via the Converse API. Uses the server's AWS credentials when no key is saved.",
   sentry: "Read-only access to issues, events and release commits, plus signed webhooks.",
   github: "Repository contents, patchora/ branches, issues and pull requests. Use a GitHub App or a personal access token.",
 };
@@ -23,17 +28,83 @@ const SOURCE_LABEL: Record<string, string> = { saved: "saved", env: "from enviro
 
 export default function IntegrationsPage() {
   const cards = useApi(() => api.integrations(), []);
+  const llmCards = cards.data?.filter((c) => c.category === "llm") ?? [];
+  const otherCards = cards.data?.filter((c) => c.category !== "llm") ?? [];
   return (
     <>
       <PageHeader title="Integrations"
         description="Configure every integration here. Values are stored in the Patchora database and used immediately — no environment file or restart needed." />
       {cards.data?.[0]?.notes[0] && <div className="mb-4"><InlineAlert tone="warn">{cards.data[0].notes[0]}</InlineAlert></div>}
       {cards.loading && !cards.data ? <LoadingRows /> : cards.error ? <ErrorState error={cards.error} onRetry={cards.reload} /> : (
-        <div className="grid gap-6 xl:grid-cols-3">
-          {cards.data?.map((card) => <IntegrationCard key={card.provider} card={card} onChange={cards.reload} />)}
+        <div className="space-y-8">
+          <div className="grid gap-6 xl:grid-cols-2">
+            {otherCards.map((card) => <IntegrationCard key={card.provider} card={card} onChange={cards.reload} />)}
+          </div>
+          <section aria-labelledby="llm-heading" className="space-y-4">
+            <div>
+              <h2 id="llm-heading" className="text-base font-semibold text-ink">Model providers</h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                The agent uses one provider for diagnosis, patch planning and patch generation. Configure any of them,
+                then choose the active one.
+              </p>
+            </div>
+            <ActiveProvider cards={llmCards} onChange={cards.reload} />
+            <div className="grid gap-6 xl:grid-cols-3">
+              {llmCards.map((card) => <IntegrationCard key={card.provider} card={card} onChange={cards.reload} />)}
+            </div>
+          </section>
         </div>
       )}
     </>
+  );
+}
+
+function ActiveProvider({ cards, onChange }: { cards: IntegrationOut[]; onChange: () => void }) {
+  const { isAdmin, refreshDiagnostics } = useApp();
+  const active = cards.find((c) => c.active);
+  const [choice, setChoice] = useState<string>();
+  const [confirm, setConfirm] = useState(false);
+  const selected = choice ?? active?.provider ?? "";
+  const target = cards.find((c) => c.provider === selected);
+  const save = useAction(async () => {
+    await api.updateSettings({ llm_provider: selected });
+    setConfirm(false);
+    setChoice(undefined);
+    onChange();
+    refreshDiagnostics();
+  });
+  return (
+    <Card title={<span className="flex items-center gap-2"><BrainCircuit className="size-4 text-accent-strong" aria-hidden />Active model provider</span>}
+      description="Every new run uses this provider. Changing it is recorded in the audit log, because it decides which vendor receives your code and error data.">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-56 flex-1">
+          <Field label="Provider">
+            {(id) => (
+              <Select id={id} value={selected} disabled={!isAdmin || save.pending} onChange={(e) => setChoice(e.target.value)}>
+                {cards.map((c) => (
+                  <option key={c.provider} value={c.provider}>
+                    {c.label || c.provider}{c.configured ? "" : " (not configured)"}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </div>
+        {isAdmin && (
+          <Button variant="primary" disabled={!choice || choice === active?.provider} loading={save.pending}
+            onClick={() => setConfirm(true)}>Use this provider</Button>
+        )}
+      </div>
+      {active && !active.configured && (
+        <div className="mt-3"><InlineAlert tone="warn">{active.label} is active but not configured yet — runs will stop until you add its key and model below.</InlineAlert></div>
+      )}
+      {save.error && <div className="mt-3"><ErrorState error={save.error} /></div>}
+      <ConfirmDialog open={confirm} title={`Switch to ${target?.label ?? selected}?`} confirmLabel="Switch provider"
+        pending={save.pending} onCancel={() => setConfirm(false)} onConfirm={() => save.run()}>
+        <p>New runs will send repository code and error data to {target?.label ?? selected}. Runs already in progress keep their current provider.</p>
+        {target && !target.configured && <p className="mt-2 text-warn">{target.label} is not configured yet.</p>}
+      </ConfirmDialog>
+    </Card>
   );
 }
 
@@ -65,9 +136,12 @@ function IntegrationCard({ card, onChange }: { card: IntegrationOut; onChange: (
 
   return (
     <Card
-      title={<span className="flex items-center gap-2 capitalize"><Plug className="size-4 text-accent-strong" aria-hidden />{card.provider}</span>}
+      title={<span className="flex items-center gap-2"><Plug className="size-4 text-accent-strong" aria-hidden />{card.label || card.provider}</span>}
       description={DESCRIPTIONS[card.provider]}
-      actions={<Badge tone={card.configured ? "ok" : "neutral"}>{card.configured ? (card.mode?.replace(/_/g, " ") ?? "configured") : "not configured"}</Badge>}
+      actions={<span className="flex flex-wrap justify-end gap-1.5">
+        {card.active && <Badge tone="accent">active</Badge>}
+        <Badge tone={card.configured ? "ok" : "neutral"}>{card.configured ? (card.mode?.replace(/_/g, " ") ?? "configured") : "not configured"}</Badge>
+      </span>}
     >
       <form className="space-y-4" autoComplete="off" onSubmit={(e) => { e.preventDefault(); setSaved(false); void save.run(); }}>
         {card.fields.map((field) => (

@@ -3137,6 +3137,21 @@
             "type": "string",
             "title": "Provider"
           },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": "other"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active",
+            "default": false
+          },
           "configured": {
             "type": "boolean",
             "title": "Configured"
@@ -3216,6 +3231,9 @@
         "type": "object",
         "required": [
           "provider",
+          "label",
+          "category",
+          "active",
           "configured",
           "mode",
           "fields",

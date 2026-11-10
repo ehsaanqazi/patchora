@@ -132,7 +132,7 @@ export default function SettingsPage() {
           <Card title="Model & retrieval">
             <div className="space-y-4">
               <p className="text-sm text-ink-muted">
-                The Groq API key and model are configured on the <Link href="/integrations" className="text-accent-strong hover:underline">Integrations</Link> page.
+                The model provider (Groq, Anthropic, OpenAI, DeepSeek, Gemini or AWS Bedrock), its key and model are chosen on the <Link href="/integrations" className="text-accent-strong hover:underline">Integrations</Link> page.
               </p>
               <Toggle checked={Boolean(draft.faiss_enabled)} onChange={(v) => set("faiss_enabled", v)}
                 label="Semantic code search (FAISS)" description={`Optional; embeddings computed locally (${String(env.embedding_model ?? "default model")}). Never used for authorization.`} />

@@ -66,7 +66,7 @@ export interface Diagnostics {
   app_env: string;
   auth_mode: string;
   integrations: Record<string, { configured: boolean; mode: string | null; last_ok: boolean | null }>;
-  groq: { model: string | null; structured_output_mode: string; max_input_tokens: number };
+  llm: { provider: string; model: string | null; configured: boolean; max_input_tokens: number };
   sandbox: { backend: string; isolation: string; available: boolean; detail: string; code_execution_enabled: boolean };
   faiss: { enabled: boolean; installed: boolean; detail: string };
   autonomy_mode: string;

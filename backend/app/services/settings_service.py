@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import AutonomyMode, SandboxBackend, Settings, get_settings
+from app.config import AutonomyMode, LLMProvider, SandboxBackend, Settings, get_settings
 from app.core.exceptions import InvalidRequestError
 from app.db.base import utcnow
 from app.db.models import AppSetting
@@ -23,6 +23,7 @@ from app.security.input_sanitization import validate_glob_pattern
 
 class RuntimeSettings(BaseModel):
     autonomy_mode: AutonomyMode
+    llm_provider: LLMProvider
     auto_create_pull_requests: bool
     max_agent_retries: int = Field(ge=0, le=5)
     max_test_runtime_seconds: int = Field(ge=10, le=3600)
@@ -52,6 +53,7 @@ RUNTIME_KEYS = tuple(RuntimeSettings.model_fields.keys())
 # Changing these alters what the agent is allowed to do; they are audited as security events.
 SECURITY_SENSITIVE_KEYS = {
     "autonomy_mode",
+    "llm_provider",  # decides which vendor receives repository code and error data
     "auto_create_pull_requests",
     "protected_paths",
     "sandbox_backend",

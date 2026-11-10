@@ -436,7 +436,7 @@ class EvaluationRun(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     dataset_version: Mapped[str] = mapped_column(String(40), nullable=False)
     model_name: Mapped[str] = mapped_column(String(120), nullable=False)
-    llm_mode: Mapped[str] = mapped_column(String(20), nullable=False)  # scripted|groq
+    llm_mode: Mapped[str] = mapped_column(String(20), nullable=False)  # scripted|groq|active
     config_version: Mapped[str] = mapped_column(String(40), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="running")
     metrics_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)

@@ -33,6 +33,7 @@ function findRun(id: number): RunDetail {
 }
 
 const ok = (provider: string) => ({ provider, ok: true, message: "Demo mode: simulated connection check succeeded.", details: {} });
+const activeLlm = () => String(state.settings.values.llm_provider ?? "anthropic");
 
 export async function demoRequest<T>(method: string, path: string, body?: unknown, query?: Query): Promise<T> {
   await delay();
@@ -44,9 +45,31 @@ function route(method: string, path: string, body: Record<string, unknown>, quer
   const id = Number(seg.find((s) => /^\d+$/.test(s)));
   const key = `${method} /${seg.map((s) => (/^\d+$/.test(s) ? ":id" : s)).join("/")}`;
 
+  if (seg[0] === "integrations" && seg.length === 3) {
+    const card = data.integrations(activeLlm()).find((c) => c.provider === seg[1]);
+    if (!card) notFound(`Integration ${seg[1]}`);
+    if (method === "POST" && seg[2] === "test") {
+      if (!card.configured) {
+        return { provider: card.provider, ok: false, details: {},
+          message: `${card.label} is not configured in the demo. In a real deployment, add its key and model here.` };
+      }
+      const models = data.demoModels[card.provider] ?? [];
+      return { provider: card.provider, ok: true, message: `Demo mode: simulated ${card.label} connection check succeeded.`,
+        details: { available_models: models } };
+    }
+    if (method === "PUT" && seg[2] === "credentials") {
+      throw new ApiError("Credentials cannot be saved in the static demo.", 403, "demo_read_only");
+    }
+  }
+
   switch (key) {
     // health & auth
-    case "GET /diagnostics": return data.diagnostics;
+    case "GET /diagnostics": {
+      const provider = activeLlm();
+      const card = data.integrations(provider).find((c) => c.provider === provider);
+      const model = card?.fields.find((f) => f.name === "model")?.value ?? null;
+      return { ...data.diagnostics, llm: { ...data.diagnostics.llm, provider, model, configured: !!card?.configured } };
+    }
     case "GET /auth/me": return data.me;
     case "POST /auth/login": return { display_name: data.me.display_name, role: data.me.role };
     case "POST /auth/logout": return { ok: true };
@@ -71,16 +94,9 @@ function route(method: string, path: string, body: Record<string, unknown>, quer
     case "GET /dashboard/activity": return data.activity.slice(0, Number(query?.limit ?? 15));
 
     // integrations
-    case "GET /integrations": return data.integrations;
-    case "POST /integrations/groq/test":
-    case "POST /integrations/sentry/test":
-    case "POST /integrations/github/test": return ok(seg[1] ?? "");
-    case "PUT /integrations/groq/credentials":
-    case "PUT /integrations/sentry/credentials":
-    case "PUT /integrations/github/credentials":
-      throw new ApiError("Credentials cannot be saved in the static demo.", 403, "demo_read_only");
+    case "GET /integrations": return data.integrations(activeLlm());
     case "GET /integrations/groq/models":
-      return { models: [{ id: data.diagnostics.groq.model, active: true, context_window: 131072 }] };
+      return { models: (data.demoModels.groq ?? []).map((id) => ({ id, active: true, context_window: 131072 })) };
 
     // sentry issues
     case "GET /sentry/issues": {

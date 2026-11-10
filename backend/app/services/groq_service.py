@@ -95,6 +95,8 @@ def _map_error(exc: Exception) -> Exception:
 
 
 class GroqLLM:
+    provider = "groq"
+    label = "Groq"
     simulated = False
 
     def __init__(self, config: GroqConfig, client: groq.AsyncGroq | None = None) -> None:
@@ -103,7 +105,7 @@ class GroqLLM:
         if not config.model:
             raise NotConfiguredError(
                 "GROQ_MODEL is not configured. Choose a currently available Groq chat model "
-                "(see docs/SETUP.md and the Integrations page's model list)."
+                "(see the Integrations page's model list)."
             )
         self.config = config
         self.model_name = config.model

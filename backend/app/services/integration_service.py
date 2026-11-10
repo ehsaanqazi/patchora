@@ -13,8 +13,14 @@ from app.db.models import IntegrationStatus
 from app.db.session import with_write_retry
 from app.providers.factory import ProviderFactory
 from app.schemas.integrations import ConnectionTestResult, FieldStatus, IntegrationOut
-from app.services.credential_service import FIELDS, encryption_enabled, resolve_credential
+from app.services.credential_service import FIELDS, LLM_PROVIDERS, encryption_enabled, resolve_credential
 from app.services.settings_service import get_runtime_settings
+
+LABELS = {"groq": "Groq", "anthropic": "Anthropic", "openai": "OpenAI", "deepseek": "DeepSeek",
+          "gemini": "Google Gemini", "bedrock": "AWS Bedrock", "sentry": "Sentry", "github": "GitHub"}
+CATEGORIES = {"sentry": "issues", "github": "code_host", **{p: "llm" for p in LLM_PROVIDERS}}
+# Stable API order: the original three first, then the additional model providers.
+ORDER = ("groq", "sentry", "github", *(p for p in LLM_PROVIDERS if p != "groq"))
 
 
 def _status_row(session: Session, provider: str) -> IntegrationStatus | None:
@@ -27,7 +33,9 @@ def integration_cards(session: Session, settings: Settings) -> list[IntegrationO
                     if encryption_enabled(settings) else
                     "Values are stored in the Patchora database (data/patchora.db) without encryption. "
                     "Protect that file; encryption and rotation are planned.")
-    for provider, specs in FIELDS.items():
+    active_llm = get_runtime_settings(session, settings).llm_provider.value
+    for provider in ORDER:
+        specs = FIELDS[provider]
         statuses: list[FieldStatus] = []
         configured_names: set[str] = set()
         for spec in specs:
@@ -49,7 +57,8 @@ def integration_cards(session: Session, settings: Settings) -> list[IntegrationO
             configured = all(spec.name in configured_names for spec in specs if spec.required)
         row = _status_row(session, provider)
         cards.append(IntegrationOut(
-            provider=provider, configured=configured, mode=mode, fields=statuses,
+            provider=provider, label=LABELS.get(provider, provider), category=CATEGORIES.get(provider, "other"),
+            active=provider == active_llm, configured=configured, mode=mode, fields=statuses,
             last_tested_at=row.last_tested_at if row else None, last_success_at=row.last_success_at if row else None,
             last_ok=row.last_ok if row else None, last_message=row.last_message if row else None,
             notes=[storage_note],
@@ -84,14 +93,19 @@ async def test_integration(provider: str, session: Session, factory: ProviderFac
             client = factory.github(session)
             details = await client.test_connection()
             message = f"Authenticated to GitHub via {details.get('auth')}."
-        elif provider == "groq":
-            client = factory.groq(session, get_runtime_settings(session, factory.settings))
+        elif provider in LLM_PROVIDERS:
+            label = LABELS[provider]
+            client = factory.llm_for(session, provider)
             details = await client.diagnose()
-            if details.get("model_available"):
-                message = f"Groq key valid; model '{details['model']}' is available."
+            if provider == "bedrock":
+                message = (f"AWS credentials valid; model '{details['model']}' answered in {details.get('region')} "
+                           "(the test sent one tiny request).")
+            elif details.get("model_available"):
+                message = f"{label} key valid; model '{details['model']}' is available."
             else:
-                message = (f"Groq key valid, but model '{details['model']}' is not available to this key. "
+                message = (f"{label} key valid, but model '{details['model']}' is not available to this key. "
                            "Choose one of the listed models.")
+            if not details.get("model_available"):
                 _record(provider, False, message)
                 return ConnectionTestResult(provider=provider, ok=False, message=message, details=details)
         else:

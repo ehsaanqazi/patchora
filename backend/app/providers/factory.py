@@ -1,6 +1,7 @@
 """Builds the external providers a run needs.
 
-Real runs get Sentry, GitHub, Groq and the configured sandbox. Demo runs get the demo
+Real runs get Sentry, GitHub, the active LLM provider (Groq, Anthropic, OpenAI, DeepSeek, Gemini or
+AWS Bedrock - runtime setting ``llm_provider``) and the configured sandbox. Demo runs get the demo
 providers (no external calls, simulated results). Tests and the evaluation harness inject
 their own providers through ``overrides``.
 """
@@ -17,10 +18,13 @@ from sqlalchemy.orm import Session
 from app.config import SandboxBackend, Settings
 from app.core.exceptions import NotConfiguredError
 from app.db.models import AnalysisRun, Repository
+from app.providers.json_chat import ChatConfig, JSONChatLLM
 from app.providers.llm import LLMClient
 from app.sandbox.docker_runner import DockerSandbox
 from app.sandbox.interface import Sandbox
 from app.sandbox.local_runner import LocalSandbox
+from app.services.anthropic_service import AnthropicLLM
+from app.services.bedrock_service import BedrockLLM
 from app.services.credential_service import all_secret_values, credential_value
 from app.services.github_service import (
     CodeHost,
@@ -30,6 +34,7 @@ from app.services.github_service import (
     TokenProvider,
 )
 from app.services.groq_service import GroqConfig, GroqLLM
+from app.services.openai_compatible_service import OpenAICompatibleLLM
 from app.services.search_service import SemanticIndex, faiss_available
 from app.services.sentry_service import IssueSource, SentryService
 from app.services.settings_service import RuntimeSettings, get_runtime_settings
@@ -81,7 +86,7 @@ class RunDependencies:
 
     def require_llm(self) -> LLMClient:
         if self.llm is None:
-            raise NotConfiguredError(self.llm_error or "Groq is not configured.")
+            raise NotConfiguredError(self.llm_error or "No LLM provider is configured.")
         return self.llm
 
     async def aclose(self) -> None:
@@ -147,6 +152,41 @@ class ProviderFactory:
             structured_output_mode=s.groq_structured_output_mode, temperature=s.groq_temperature,
         ))
 
+    def _chat_config(self, session: Session, provider: str) -> ChatConfig:
+        s = self.settings
+        api_key = credential_value(session, provider, "api_key", s) if provider != "bedrock" else None
+        return ChatConfig(
+            api_key=api_key,
+            model=credential_value(session, provider, "model", s),
+            base_url=credential_value(session, provider, "base_url", s) if provider != "bedrock" else None,
+            timeout_seconds=s.llm_timeout_seconds, max_retries=s.llm_max_retries,
+            max_input_tokens=s.llm_max_input_tokens, max_output_tokens=s.llm_max_output_tokens,
+            temperature=s.llm_temperature,
+        )
+
+    def llm_for(self, session: Session, provider: str) -> GroqLLM | JSONChatLLM:
+        """Build the client for one specific provider (used by connection tests and model lists)."""
+        if provider == "groq":
+            return self.groq(session, get_runtime_settings(session, self.settings))
+        if provider == "anthropic":
+            return AnthropicLLM(self._chat_config(session, provider))
+        if provider in {"openai", "deepseek", "gemini"}:
+            return OpenAICompatibleLLM(provider, self._chat_config(session, provider))
+        if provider == "bedrock":
+            s = self.settings
+            return BedrockLLM(
+                self._chat_config(session, provider),
+                region=credential_value(session, "bedrock", "region", s),
+                access_key_id=credential_value(session, "bedrock", "access_key_id", s),
+                secret_access_key=credential_value(session, "bedrock", "secret_access_key", s),
+                session_token=credential_value(session, "bedrock", "session_token", s),
+            )
+        raise NotConfiguredError(f"Unknown LLM provider '{provider}'.")
+
+    def llm(self, session: Session, runtime: RuntimeSettings) -> GroqLLM | JSONChatLLM:
+        """The active LLM provider (chosen on the Integrations page)."""
+        return self.llm_for(session, runtime.llm_provider.value)
+
     def sandbox(self, runtime: RuntimeSettings) -> Sandbox:
         if not self.settings.sandbox_enabled or runtime.sandbox_backend == SandboxBackend.DISABLED:
             return _DisabledSandbox("Sandboxed execution is disabled by configuration.")
@@ -181,7 +221,7 @@ class ProviderFactory:
             issue_source, issue_err = _try("issue_source", DemoIssueSource)
             code_host, host_err = _try("code_host", DemoCodeHost)
             if state.get("use_real_llm"):
-                llm, llm_err = _try("llm", lambda: self.groq(session, runtime))
+                llm, llm_err = _try("llm", lambda: self.llm(session, runtime))
                 sandbox = self.overrides["sandbox"](session, run) if "sandbox" in self.overrides \
                     else self.sandbox(runtime)
             else:
@@ -192,7 +232,7 @@ class ProviderFactory:
             repository = session.get(Repository, run.repository_id) if run.repository_id else None
             issue_source, issue_err = _try("issue_source", lambda: self.sentry(session))
             code_host, host_err = _try("code_host", lambda: self.github(session, repository))
-            llm, llm_err = _try("llm", lambda: self.groq(session, runtime))
+            llm, llm_err = _try("llm", lambda: self.llm(session, runtime))
             sandbox = self.overrides["sandbox"](session, run) if "sandbox" in self.overrides \
                 else self.sandbox(runtime)
 

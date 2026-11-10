@@ -1,7 +1,8 @@
 """Integration configuration stored in the database.
 
-Every Groq, Sentry and GitHub field (API keys, tokens, model id, organization, URLs, GitHub App
-id/installation/private key, webhook secrets) is configured on the Integrations page and stored in
+Every LLM provider (Groq, Anthropic, OpenAI, DeepSeek, Gemini, AWS Bedrock), Sentry and GitHub field
+(API keys, tokens, model id, region, organization, URLs, GitHub App id/installation/private key,
+webhook secrets) is configured on the Integrations page and stored in
 ``integration_credentials``. The application reads them from there at use time, so changes apply
 without a restart.
 
@@ -36,7 +37,7 @@ class FieldSpec:
     label: str
     secret: bool
     env_attr: str | None  # optional environment fallback (Settings attribute)
-    kind: str = "text"  # text | url | slug | digits | model | pem
+    kind: str = "text"  # text | url | slug | digits | model | pem | region
     required: bool = False
     help: str = ""
     default: str | None = None
@@ -51,6 +52,51 @@ FIELDS: dict[str, list[FieldSpec]] = {
                        "available to your key."),
         FieldSpec("base_url", "Base URL", False, "groq_base_url", kind="url",
                   help="Optional. Leave empty for the Groq default."),
+    ],
+    "anthropic": [
+        FieldSpec("api_key", "API key", True, "anthropic_api_key", required=True,
+                  help="Claude Console → API keys."),
+        FieldSpec("model", "Model id", False, None, kind="model", required=True,
+                  help="For example claude-opus-5-5. 'Test connection' lists the models available to your key."),
+        FieldSpec("base_url", "Base URL", False, None, kind="url",
+                  help="Optional. Leave empty for the Anthropic API."),
+    ],
+    "openai": [
+        FieldSpec("api_key", "API key", True, "openai_api_key", required=True,
+                  help="OpenAI platform → API keys."),
+        FieldSpec("model", "Model id", False, None, kind="model", required=True,
+                  help="A chat model that supports JSON mode. 'Test connection' lists the models available."),
+        FieldSpec("base_url", "Base URL", False, None, kind="url",
+                  help="Optional. Leave empty for the OpenAI API; set it for another OpenAI-compatible endpoint."),
+    ],
+    "deepseek": [
+        FieldSpec("api_key", "API key", True, "deepseek_api_key", required=True,
+                  help="DeepSeek platform → API keys."),
+        FieldSpec("model", "Model id", False, None, kind="model", required=True,
+                  help="For example deepseek-chat. 'Test connection' lists the models available."),
+        FieldSpec("base_url", "Base URL", False, None, kind="url", default="https://api.deepseek.com",
+                  help="Change only if DeepSeek tells you to."),
+    ],
+    "gemini": [
+        FieldSpec("api_key", "API key", True, "gemini_api_key", required=True,
+                  help="Google AI Studio → Get API key."),
+        FieldSpec("model", "Model id", False, None, kind="model", required=True,
+                  help="A Gemini model id. 'Test connection' lists the models available to your key."),
+        FieldSpec("base_url", "Base URL", False, None, kind="url",
+                  default="https://generativelanguage.googleapis.com/v1beta/openai",
+                  help="Gemini's OpenAI-compatible endpoint. Change only if Google tells you to."),
+    ],
+    "bedrock": [
+        FieldSpec("region", "AWS region", False, "aws_region", kind="region", required=True,
+                  help="Region where the model is enabled, for example us-east-1."),
+        FieldSpec("model", "Model or inference profile id", False, None, kind="model", required=True,
+                  help="A Bedrock model id or inference profile id/ARN that supports the Converse API."),
+        FieldSpec("access_key_id", "Access key id", True, "aws_access_key_id",
+                  help="Optional. Leave empty to use the server's AWS credentials (IAM role, profile or env)."),
+        FieldSpec("secret_access_key", "Secret access key", True, "aws_secret_access_key",
+                  help="Required when an access key id is set."),
+        FieldSpec("session_token", "Session token", True, "aws_session_token",
+                  help="Optional, for temporary credentials."),
     ],
     "sentry": [
         FieldSpec("auth_token", "Auth token", True, "sentry_auth_token", required=True,
@@ -79,7 +125,11 @@ FIELDS: dict[str, list[FieldSpec]] = {
 }
 
 PROVIDERS = tuple(FIELDS)
-_MODEL_RE = re.compile(r"^[A-Za-z0-9._/:-]{1,120}$")
+_MODEL_RE = re.compile(r"^[A-Za-z0-9._/:@-]{1,200}$")
+_REGION_RE = re.compile(r"^[a-z]{2}(?:-[a-z]+)+-\d{1,2}$")
+
+# Providers that answer the agent's prompts. Exactly one is active (runtime setting ``llm_provider``).
+LLM_PROVIDERS = ("groq", "anthropic", "openai", "deepseek", "gemini", "bedrock")
 _PLAIN = "plain:"
 _ENC = "enc:"
 MAX_VALUE = 16_000
@@ -168,6 +218,8 @@ def _validate(spec: FieldSpec, value: str) -> str:
         raise InvalidRequestError(f"{spec.label} must be numeric.")
     elif spec.kind == "model" and not _MODEL_RE.match(value):
         raise InvalidRequestError(f"{spec.label} contains invalid characters.")
+    elif spec.kind == "region" and not _REGION_RE.match(value):
+        raise InvalidRequestError(f"{spec.label} must look like us-east-1.")
     elif spec.kind == "pem" and ("-----BEGIN" not in value or "PRIVATE KEY-----" not in value):
         raise InvalidRequestError("The private key must be a PEM block (-----BEGIN ... PRIVATE KEY-----).")
     return value

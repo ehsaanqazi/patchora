@@ -25,6 +25,9 @@ class FieldStatus(ApiModel):
 
 class IntegrationOut(ApiModel):
     provider: str
+    label: str = ""
+    category: str = "other"  # llm | issues | code_host
+    active: bool = False  # LLM providers only: the one the agent uses
     configured: bool
     mode: str | None = None
     fields: list[FieldStatus]

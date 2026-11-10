@@ -16,6 +16,11 @@ import { useAction, useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { humanize, timeAgo } from "@/lib/format";
 
+const PROVIDER_LABEL: Record<string, string> = {
+  sentry: "Sentry", github: "GitHub", groq: "Groq", anthropic: "Anthropic", openai: "OpenAI", deepseek: "DeepSeek",
+  gemini: "Google Gemini", bedrock: "AWS Bedrock",
+};
+
 export default function OverviewPage() {
   const [demo, setDemo] = useState(false);
   const { diagnostics, canReview } = useApp();
@@ -47,7 +52,7 @@ export default function OverviewPage() {
         <div className="mb-4">
           <InlineAlert tone="accent">
             Demo data is synthetic. Demo runs use scripted model responses, simulated test results and simulated
-            publication — nothing is sent to GitHub, Sentry or Groq.
+            publication — nothing is sent to GitHub, Sentry or any model provider.
           </InlineAlert>
         </div>
       )}
@@ -97,16 +102,19 @@ export default function OverviewPage() {
           <Card title="Integrations">
             {diagnostics ? (
               <ul className="space-y-3 text-sm">
-                {(["groq", "sentry", "github"] as const).map((name) => {
+                {(["sentry", "github", diagnostics.llm.provider] as const).map((name) => {
                   const item = diagnostics.integrations[name];
                   const Icon = item?.configured ? (item.last_ok === false ? CircleX : CircleCheck) : CircleDashed;
+                  const isModel = name === diagnostics.llm.provider;
                   return (
-                    <li key={name} className="flex items-center justify-between">
-                      <span className="flex items-center gap-2 capitalize">
-                        <Icon className={clsx("size-4", item?.configured ? (item.last_ok === false ? "text-bad" : "text-ok") : "text-ink-faint")} aria-hidden />
-                        {name}
+                    <li key={name} className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Icon className={clsx("size-4 shrink-0", item?.configured ? (item.last_ok === false ? "text-bad" : "text-ok") : "text-ink-faint")} aria-hidden />
+                        <span className="truncate">{isModel ? `Model · ${PROVIDER_LABEL[name] ?? name}` : PROVIDER_LABEL[name] ?? name}</span>
                       </span>
-                      <Badge tone={item?.configured ? "ok" : "neutral"}>{item?.configured ? (item.mode ?? "configured") : "not configured"}</Badge>
+                      <Badge tone={item?.configured ? "ok" : "neutral"}>
+                        {item?.configured ? (isModel ? (diagnostics.llm.model ?? "configured") : (item.mode?.replace(/_/g, " ") ?? "configured")) : "not configured"}
+                      </Badge>
                     </li>
                   );
                 })}
@@ -153,7 +161,8 @@ function DemoLauncher() {
     const result = await api.startDemo(scenario, mode, realLlm);
     router.push(`/runs/${result.run_id}`);
   });
-  const groqReady = !!diagnostics?.integrations.groq?.configured;
+  const llmReady = !!diagnostics?.llm.configured;
+  const llmName = diagnostics ? (PROVIDER_LABEL[diagnostics.llm.provider] ?? diagnostics.llm.provider) : "model provider";
   const selected = scenarios.data?.find((item) => item.key === scenario);
 
   return (
@@ -178,10 +187,10 @@ function DemoLauncher() {
         </Field>
       </div>
       <div className="mt-4">
-        <Toggle checked={realLlm} onChange={setRealLlm} disabled={!groqReady}
-          label="Use the real Groq model"
-          description={groqReady ? "Diagnosis and patch come from Groq; tests run in the configured sandbox (not simulated)."
-            : "Configure Groq on the Integrations page to enable."} />
+        <Toggle checked={realLlm} onChange={setRealLlm} disabled={!llmReady}
+          label={`Use the real model (${llmName})`}
+          description={llmReady ? `Diagnosis and patch come from ${llmName}; tests run in the configured sandbox (not simulated).`
+            : `Configure ${llmName} on the Integrations page (or choose another active provider) to enable.`} />
       </div>
       {start.error && <div className="mt-3"><ErrorState error={start.error} /></div>}
       <div className="mt-4 flex justify-end">

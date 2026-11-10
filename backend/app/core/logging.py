@@ -19,6 +19,9 @@ _TOKEN_PATTERNS = [
     re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
     re.compile(r"\bgsk_[A-Za-z0-9]{20,}\b"),
     re.compile(r"\bsntry[su]_[A-Za-z0-9_=+/-]{20,}\b"),
+    re.compile(r"\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}\b"),  # Anthropic / OpenAI / DeepSeek keys
+    re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),  # Google (Gemini) API keys
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),  # AWS access key ids
     re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
 ]
 

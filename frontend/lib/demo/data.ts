@@ -31,11 +31,16 @@ export const diagnostics: Diagnostics = {
   app_env: "demo",
   auth_mode: "local",
   integrations: {
-    groq: { configured: true, mode: "demo", last_ok: true },
     sentry: { configured: true, mode: "demo", last_ok: true },
     github: { configured: true, mode: "demo", last_ok: true },
+    groq: { configured: true, mode: "demo", last_ok: true },
+    anthropic: { configured: true, mode: "demo", last_ok: true },
+    openai: { configured: false, mode: null, last_ok: null },
+    deepseek: { configured: false, mode: null, last_ok: null },
+    gemini: { configured: false, mode: null, last_ok: null },
+    bedrock: { configured: false, mode: null, last_ok: null },
   },
-  groq: { model: MODEL, structured_output_mode: "json_schema", max_input_tokens: 24000 },
+  llm: { provider: "anthropic", model: "claude-opus-5-5", configured: true, max_input_tokens: 100000 },
   sandbox: { backend: "simulated", isolation: "none", available: true,
     detail: "Static demo: test results are simulated.", code_execution_enabled: true },
   faiss: { enabled: false, installed: false, detail: "Not available in the static demo." },
@@ -441,25 +446,57 @@ export function runEvents(run: RunDetail): RunEvent[] {
 // Integrations, settings, audit, activity, demo scenarios, evaluations
 // ---------------------------------------------------------------------------------------------
 
-const field = (name: string, label: string, secret: boolean, value: string | null, help = "") => ({
-  name, label, help, kind: secret ? "secret" : "text", required: secret, env_var: name.toUpperCase(), secret,
-  configured: true, source: "database", value: secret ? null : value,
+const field = (name: string, label: string, secret: boolean, value: string | null, help = "", configured = true,
+  required = true) => ({
+  name, label, help, kind: secret ? "secret" : "text", required, env_var: name.toUpperCase(), secret,
+  configured, source: configured ? "saved" : null, value: secret || !configured ? null : value,
 });
 
-export const integrations: IntegrationOut[] = [
-  { provider: "groq", configured: true, mode: "demo", last_tested_at: ago(30), last_success_at: ago(30), last_ok: true,
-    last_message: "Demo mode: no real connection.", notes: ["Static demo build — credentials cannot be saved and no external service is contacted."],
-    fields: [field("groq_api_key", "API key", true, null, "Groq console → API Keys."), field("groq_model", "Model", false, MODEL)] },
-  { provider: "sentry", configured: true, mode: "demo", last_tested_at: ago(30), last_success_at: ago(30), last_ok: true,
-    last_message: null, notes: [],
-    fields: [field("sentry_auth_token", "Auth token", true, null), field("sentry_organization", "Organization", false, ORG)] },
-  { provider: "github", configured: true, mode: "demo", last_tested_at: ago(30), last_success_at: ago(30), last_ok: true,
-    last_message: null, notes: [],
-    fields: [field("github_personal_access_token", "Personal access token", true, null)] },
+const DEMO_NOTE = "Static demo build — credentials cannot be saved and no external service is contacted.";
+
+type CardSeed = [provider: string, label: string, category: string, configured: boolean, fields: IntegrationOut["fields"]];
+
+const llmFields = (keyHelp: string, model: string | null, configured: boolean) => [
+  field("api_key", "API key", true, null, keyHelp, configured),
+  field("model", "Model id", false, model, "'Test connection' lists the models available to your key.", configured),
+  field("base_url", "Base URL", false, null, "Optional.", false, false),
 ];
 
+const CARD_SEEDS: CardSeed[] = [
+  ["groq", "Groq", "llm", true, llmFields("Groq console → API Keys.", MODEL, true)],
+  ["sentry", "Sentry", "issues", true, [field("auth_token", "Auth token", true, null),
+    field("organization", "Organization slug", false, ORG)]],
+  ["github", "GitHub", "code_host", true, [field("personal_access_token", "Personal access token", true, null)]],
+  ["anthropic", "Anthropic", "llm", true, llmFields("Claude Console → API keys.", "claude-opus-5-5", true)],
+  ["openai", "OpenAI", "llm", false, llmFields("OpenAI platform → API keys.", null, false)],
+  ["deepseek", "DeepSeek", "llm", false, llmFields("DeepSeek platform → API keys.", null, false)],
+  ["gemini", "Google Gemini", "llm", false, llmFields("Google AI Studio → Get API key.", null, false)],
+  ["bedrock", "AWS Bedrock", "llm", false, [
+    field("region", "AWS region", false, null, "For example us-east-1.", false),
+    field("model", "Model or inference profile id", false, null, "A Bedrock model id that supports Converse.", false),
+    field("access_key_id", "Access key id", true, null, "Optional: leave empty to use the server's AWS credentials.", false, false),
+    field("secret_access_key", "Secret access key", true, null, "Required when an access key id is set.", false, false),
+  ]],
+];
+
+/** Integration cards; `activeLlm` marks the provider the agent uses. */
+export function integrations(activeLlm: string): IntegrationOut[] {
+  return CARD_SEEDS.map(([provider, label, category, configured, fields], i) => ({
+    provider, label, category, active: category === "llm" && provider === activeLlm, configured,
+    mode: configured ? "demo" : null, fields,
+    last_tested_at: configured ? ago(30) : null, last_success_at: configured ? ago(30) : null,
+    last_ok: configured ? true : null, last_message: null, notes: i === 0 ? [DEMO_NOTE] : [],
+  }));
+}
+
+/** Models a "Test connection" lists per provider in the demo. */
+export const demoModels: Record<string, string[]> = {
+  groq: [MODEL],
+  anthropic: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+};
+
 const SETTINGS_VALUES = {
-  autonomy_mode: "prepare_patch", max_agent_retries: 2, max_test_runtime_seconds: 300, max_patch_files: 5,
+  autonomy_mode: "prepare_patch", llm_provider: "anthropic", max_agent_retries: 2, max_test_runtime_seconds: 300, max_patch_files: 5,
   max_patch_lines: 200, audit_retention_days: 90, run_retention_days: 30, sandbox_backend: "docker",
   allow_unsafe_local_execution: false, sandbox_allow_dependency_install: true,
   protected_paths: [".github/**", "**/Dockerfile", "**/*.env", "**/*.pem", "**/*.key", "**/secrets/**",
@@ -470,7 +507,7 @@ const SETTINGS_VALUES = {
 export const settings: SettingsOut = {
   values: { ...SETTINGS_VALUES },
   defaults: { ...SETTINGS_VALUES },
-  security_sensitive: ["autonomy_mode", "sandbox_backend", "allow_unsafe_local_execution", "protected_paths"],
+  security_sensitive: ["autonomy_mode", "llm_provider", "sandbox_backend", "allow_unsafe_local_execution", "protected_paths"],
   environment: { app_env: "demo", embedding_model: "all-MiniLM-L6-v2" },
 };
 

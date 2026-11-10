@@ -139,7 +139,7 @@ def run_bounded(
 
 
 SECRET_ENV_PREFIXES = ("GROQ_", "GITHUB_", "SENTRY_", "APP_", "AWS_", "AZURE_", "GOOGLE_", "OPENAI_",
-                       "ANTHROPIC_", "DATABASE_", "GH_", "NPM_TOKEN", "PYPI_")
+                       "ANTHROPIC_", "DEEPSEEK_", "GEMINI_", "DATABASE_", "GH_", "NPM_TOKEN", "PYPI_")
 
 
 def scrubbed_environ() -> dict[str, str]:

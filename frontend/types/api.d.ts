@@ -1030,6 +1030,21 @@ export interface components {
         IntegrationOut: {
             /** Provider */
             provider: string;
+            /**
+             * Label
+             * @default
+             */
+            label: string;
+            /**
+             * Category
+             * @default other
+             */
+            category: string;
+            /**
+             * Active
+             * @default false
+             */
+            active: boolean;
             /** Configured */
             configured: boolean;
             /** Mode */

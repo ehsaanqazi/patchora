@@ -8,10 +8,12 @@ Usage::
 
     python -m app.evaluation.evaluator --llm scripted --sandbox auto
     python -m app.evaluation.evaluator --llm groq            # uses GROQ_API_KEY / GROQ_MODEL
+    python -m app.evaluation.evaluator --llm active          # the provider selected on the Integrations page
 
 * ``--llm scripted``: deterministic, pre-recorded model responses. Measures the pipeline
   (evidence gathering, gates, validation, publication, idempotency), NOT model quality.
-* ``--llm groq``: the configured Groq model answers every prompt. Cases marked
+* ``--llm groq`` / ``--llm active``: the configured Groq model, or the active provider (Groq, Anthropic,
+  OpenAI, DeepSeek, Gemini or AWS Bedrock), answers every prompt. Cases marked
   ``scripted_only`` (malformed output, forced timeout) are skipped.
 * Code is executed for real on the bundled synthetic fixtures: in Docker when available,
   otherwise with the local runner (acceptable only because the fixtures are trusted,
@@ -135,7 +137,7 @@ class Harness:
         return cls(root=case.fixture, full_name=case.repo, sha=EVAL_SHA)
 
     def _llm(self, session: Session, run: AnalysisRun | None) -> LLMClient:
-        if self.llm_mode == "groq":
+        if self.llm_mode in {"groq", "active"}:
             assert self.groq is not None
             return self.groq
         responses = json.loads(json.dumps(self._case().responses))
@@ -314,14 +316,16 @@ async def evaluate(llm_mode: str, sandbox_kind: str, only: list[str] | None, out
 
     groq: LLMClient | None = None
     model_name = "scripted-eval-model"
-    if llm_mode == "groq":
-        # Groq credentials and model are configured on the Integrations page (main database).
+    if llm_mode in {"groq", "active"}:
+        # Provider credentials and model are configured on the Integrations page (main database).
         upgrade_to_head(main_settings.database_url)
         main_engine = build_engine(main_settings.database_url)
         try:
             with Session(main_engine) as main_session:
-                groq = ProviderFactory(main_settings).groq(
-                    main_session, get_runtime_settings(main_session, main_settings))
+                factory = ProviderFactory(main_settings)
+                runtime = get_runtime_settings(main_session, main_settings)
+                groq = factory.groq(main_session, runtime) if llm_mode == "groq" \
+                    else factory.llm(main_session, runtime)
         finally:
             main_engine.dispose()
         model_name = groq.model_name
@@ -348,7 +352,8 @@ async def evaluate(llm_mode: str, sandbox_kind: str, only: list[str] | None, out
         "interpretation": ("Scripted mode replays fixed model responses: these numbers measure the pipeline "
                            "(evidence, gates, sandboxed validation, publication, idempotency), not model quality."
                            if llm_mode == "scripted" else
-                           "Groq mode: every diagnosis, plan and patch was produced by the configured model."),
+                           f"Model mode ({getattr(groq, 'label', 'LLM')}): every diagnosis, plan and patch was "
+                           "produced by the configured model."),
         "metrics": metrics, "results": results,
     }
     await asyncio.to_thread(write_report, output, stamp, report)
@@ -381,7 +386,7 @@ def _record(main_settings: Settings, report: dict[str, Any]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Patchora evaluation suite.")
-    parser.add_argument("--llm", choices=["scripted", "groq"], default="scripted")
+    parser.add_argument("--llm", choices=["scripted", "groq", "active"], default="scripted")
     parser.add_argument("--sandbox", choices=["auto", "docker", "local"], default="auto")
     parser.add_argument("--case", action="append", help="Run only this case (repeatable)")
     parser.add_argument("--output", type=Path, default=None)

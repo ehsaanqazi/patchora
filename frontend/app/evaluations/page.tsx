@@ -41,7 +41,7 @@ export default function EvaluationsPage() {
   return (
     <>
       <PageHeader title="Evaluations"
-        description="Measured results on the labeled synthetic dataset. Scripted runs measure the pipeline; Groq runs measure the model."
+        description="Measured results on the labeled synthetic dataset. Scripted runs measure the pipeline; model runs (make eval-groq, or --llm active) measure the configured model."
         actions={isAdmin && <Button icon={<FlaskConical className="size-4" />} loading={start.pending} onClick={() => start.run()}>Run scripted evaluation</Button>} />
       {start.error && <div className="mb-4"><ErrorState error={start.error} /></div>}
       {started && <div className="mb-4"><InlineAlert tone="info">Evaluation started in the background. Results appear here when it finishes (about a minute).</InlineAlert></div>}

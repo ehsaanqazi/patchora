@@ -3,6 +3,8 @@
 The agent depends only on :class:`LLMClient`. Implementations:
 
 * :class:`app.services.groq_service.GroqLLM` - real Groq inference.
+* :class:`app.providers.json_chat.JSONChatLLM` subclasses - Anthropic, OpenAI, DeepSeek, Gemini and
+  AWS Bedrock (one provider is active at a time; runtime setting ``llm_provider``).
 * :class:`ScriptedLLM` - deterministic, pre-recorded responses for demo mode, automated tests
   and pipeline evaluation. Every result it produces is flagged ``simulated=True`` and the UI
   labels it as such.

@@ -30,6 +30,17 @@ class AutonomyMode(StrEnum):
     AUTO_PR = "auto_pr"  # Mode C
 
 
+class LLMProvider(StrEnum):
+    """Which model provider the agent uses (one active at a time; chosen on the Integrations page)."""
+
+    GROQ = "groq"
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    DEEPSEEK = "deepseek"
+    GEMINI = "gemini"
+    BEDROCK = "bedrock"
+
+
 class SandboxBackend(StrEnum):
     DOCKER = "docker"
     LOCAL = "local"  # development only, weak isolation
@@ -111,6 +122,22 @@ class Settings(BaseSettings):
     groq_price_input_per_million: float | None = None
     groq_price_output_per_million: float | None = None
 
+    # --- Other LLM providers (configured on the Integrations page; env vars are a fallback) ----
+    anthropic_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
+    deepseek_api_key: SecretStr | None = None
+    gemini_api_key: SecretStr | None = None
+    aws_access_key_id: SecretStr | None = None
+    aws_secret_access_key: SecretStr | None = None
+    aws_session_token: SecretStr | None = None
+    aws_region: str | None = None
+    # Shared limits for every non-Groq provider.
+    llm_timeout_seconds: float = 300.0
+    llm_max_retries: int = 3
+    llm_max_input_tokens: int = 100_000
+    llm_max_output_tokens: int = 16_000
+    llm_temperature: float = 0.1
+
     # --- GitHub -------------------------------------------------------------------------
     github_api_url: str = "https://api.github.com"
     github_app_id: str | None = None
@@ -132,6 +159,7 @@ class Settings(BaseSettings):
 
     # --- Agent & policy defaults (overridable at runtime through the Settings page) ----
     autonomy_mode: AutonomyMode = AutonomyMode.PREPARE_PATCH
+    llm_provider: LLMProvider = LLMProvider.GROQ
     auto_create_pull_requests: bool = False
     max_agent_retries: int = Field(default=2, ge=0, le=5)
     max_test_runtime_seconds: int = Field(default=300, ge=10, le=3600)
@@ -181,6 +209,7 @@ class Settings(BaseSettings):
     @field_validator(
         "groq_model",
         "groq_base_url",
+        "aws_region",
         "github_app_id",
         "github_installation_id",
         "sentry_org",
@@ -196,6 +225,13 @@ class Settings(BaseSettings):
 
     @field_validator(
         "groq_api_key",
+        "anthropic_api_key",
+        "openai_api_key",
+        "deepseek_api_key",
+        "gemini_api_key",
+        "aws_access_key_id",
+        "aws_secret_access_key",
+        "aws_session_token",
         "app_secret_key",
         "app_admin_token",
         "github_webhook_secret",
@@ -232,6 +268,13 @@ class Settings(BaseSettings):
         values: list[str] = []
         for field in (
             self.groq_api_key,
+            self.anthropic_api_key,
+            self.openai_api_key,
+            self.deepseek_api_key,
+            self.gemini_api_key,
+            self.aws_access_key_id,
+            self.aws_secret_access_key,
+            self.aws_session_token,
             self.app_secret_key,
             self.app_admin_token,
             self.github_webhook_secret,
