@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 250" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12">
+  <rect width="960" height="250" fill="#0b0e14"/>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#737c8f"/>
+    </marker>
+  </defs>
+  <g fill="#161b25" stroke="#343c4e">
+    <rect x="15" y="40" width="110" height="56" rx="8"/>
+    <rect x="145" y="40" width="120" height="56" rx="8"/>
+    <rect x="285" y="40" width="120" height="56" rx="8"/>
+    <rect x="425" y="40" width="120" height="56" rx="8"/>
+    <rect x="565" y="40" width="120" height="56" rx="8"/>
+    <rect x="705" y="40" width="110" height="56" rx="8" stroke="#8b7cf6"/>
+    <rect x="835" y="40" width="110" height="56" rx="8" stroke="#3fb68b"/>
+  </g>
+  <g fill="#e6e9ef" text-anchor="middle" font-weight="600">
+    <text x="70" y="63">Sentry issue</text>
+    <text x="205" y="63">Resolve repo</text>
+    <text x="345" y="63">Investigate</text>
+    <text x="485" y="63">Plan &amp; patch</text>
+    <text x="625" y="63">Sandbox tests</text>
+    <text x="760" y="63">Human review</text>
+    <text x="890" y="63">Draft PR</text>
+  </g>
+  <g fill="#a3abbb" text-anchor="middle" font-size="10.5">
+    <text x="70" y="80">webhook / import</text>
+    <text x="205" y="80">mapping + pinned SHA</text>
+    <text x="345" y="80">evidence E1..En + LLM</text>
+    <text x="485" y="80">edits → diff → policy</text>
+    <text x="625" y="80">baseline vs patched</text>
+    <text x="760" y="80">approve / reject</text>
+    <text x="890" y="80">never merges</text>
+  </g>
+  <g stroke="#737c8f" stroke-width="1.5" marker-end="url(#a)">
+    <line x1="125" y1="68" x2="143" y2="68"/>
+    <line x1="265" y1="68" x2="283" y2="68"/>
+    <line x1="405" y1="68" x2="423" y2="68"/>
+    <line x1="545" y1="68" x2="563" y2="68"/>
+    <line x1="685" y1="68" x2="703" y2="68"/>
+    <line x1="815" y1="68" x2="833" y2="68"/>
+    <path d="M625 96 C625 130 485 130 485 98" fill="none"/>
+  </g>
+  <text x="555" y="138" fill="#e3a440" text-anchor="middle" font-size="10.5">tests fail → bounded repair attempts</text>
+  <g font-size="11">
+    <rect x="15" y="165" width="930" height="68" rx="8" fill="#11151d" stroke="#262d3b"/>
+    <text x="35" y="190" fill="#ef6a6a" font-weight="600">Stops for a human (NEEDS_HUMAN_REVIEW) when:</text>
+    <text x="35" y="210" fill="#a3abbb">no repository mapping · insufficient evidence · external / infrastructure cause · protected path or secret in patch ·</text>
+    <text x="35" y="226" fill="#a3abbb">patch exceeds limits · tests keep failing or time out · repository access denied · model output invalid after retries</text>
+  </g>
+</svg>

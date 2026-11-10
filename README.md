@@ -7,7 +7,7 @@ patch, validates the patch by running tests in a **disposable Docker sandbox**, 
 
 It never pushes to a default branch, never merges, never deploys, and prefers abstaining over guessing.
 
-![Workflow](docs/workflow.svg)
+![Workflow](workflow.svg)
 
 ## Features
 
@@ -45,8 +45,6 @@ Sentry ──webhook/API──▶ FastAPI ──▶ SQLite (runs, steps, events,
                                          │        └──▶ Docker sandbox (setup ▸ baseline ▸ patched ▸ static)
 Next.js dashboard ◀──REST + SSE (same-origin proxy)──┘
 ```
-
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Security model: [docs/SECURITY.md](docs/SECURITY.md)
 
 ## Prerequisites
 
@@ -89,8 +87,8 @@ curl -X POST localhost:3000/api/v1/demo/runs -H 'X-Requested-With: patchora' \
 Demo runs use synthetic Sentry issues, a bundled fixture repository, scripted model responses, simulated
 test results and simulated publication — every one of these is labeled in the UI and nothing leaves your
 machine. Scenarios: a fixable `ZeroDivisionError`, a missing-null-check `AttributeError`, an external
-timeout (the agent abstains), and a prompt-injection attempt (blocked by policy). See
-[docs/DEMO.md](docs/DEMO.md) for a five-minute walkthrough. Reset with `python backend/scripts/create_demo_data.py --reset`.
+timeout (the agent abstains), and a prompt-injection attempt (blocked by policy).
+Reset with `python backend/scripts/create_demo_data.py --reset`.
 
 ## Configuration
 
@@ -111,7 +109,6 @@ page. Both are admin-only and audited.
 > ([.env.example](.env.example)) still work as an optional fallback when a field has no saved value.
 
 Then connect a repository on the **Repositories** page, enable it (allowlist) and map the Sentry project to it.
-Full instructions: [docs/SETUP.md](docs/SETUP.md).
 
 ## Tests and quality checks
 
@@ -134,13 +131,10 @@ the optional `faiss` extra is installed.
   --ignore-scripts`), which still downloads third-party packages.
 - **Prompt injection** is mitigated (untrusted-data framing, schema validation, code-enforced scope, policy
   checks, human approval) but the model can still produce a plausible wrong fix — that is why approval is the default.
-- **SQLite and the in-process worker pool are for a single instance.** See ARCHITECTURE.md for when to move to
-  PostgreSQL and an external queue.
+- **SQLite and the in-process worker pool are for a single instance.** Move to
+  PostgreSQL and an external queue for multi-instance deployments.
 - `AUTH_MODE=local` is a single-user development mode (loopback only); use `AUTH_MODE=token` elsewhere and
   put the app behind HTTPS.
-
-More: [docs/SECURITY.md](docs/SECURITY.md) · Troubleshooting: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) ·
-API: [docs/API.md](docs/API.md) · Evaluation: [docs/EVALUATION.md](docs/EVALUATION.md)
 
 ## Repository layout
 
@@ -151,7 +145,6 @@ backend/app/        FastAPI app: api/, agent/ (state machine, nodes, policies, p
 backend/tests/      unit, integration, security and evaluation tests
 backend/scripts/    init_db, create_demo_data, create_user, check_integrations, faiss_index, export_openapi
 frontend/           Next.js dashboard (types generated from the OpenAPI schema: npm run gen:api)
-docs/               architecture, security, setup, API, troubleshooting, demo, evaluation
 ```
 
 ## License
