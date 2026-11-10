@@ -1,0 +1,34 @@
+# Optional containerised development stack. The default setup runs directly on the host
+# (see README). In this stack, sandboxed test execution is DISABLED: running sandbox
+# containers from inside the backend container would require mounting the Docker socket,
+# which grants root-equivalent access to the host. Investigation, patch preview, demo mode
+# and GitHub/Sentry/Groq integrations all work; to execute repository tests, run the backend
+# on the host with Docker available (see docs/SETUP.md and docs/SECURITY.md).
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SANDBOX_BACKEND: disabled
+      FRONTEND_ORIGIN: http://localhost:3000
+    volumes:
+      - patchora-data:/app/data
+    ports:
+      - "127.0.0.1:8000:8000"   # never expose the development server publicly
+      - "127.0.0.1:3000:3000"   # the frontend shares this network namespace (see below)
+
+  frontend:
+    build:
+      context: frontend
+    # Share the backend's network namespace so the Next.js proxy reaches FastAPI over loopback;
+    # AUTH_MODE=local only accepts loopback clients.
+    network_mode: "service:backend"
+    depends_on:
+      - backend
+
+volumes:
+  patchora-data:

@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-canvas: #0b0e14;
+  --color-surface: #11151d;
+  --color-surface-2: #161b25;
+  --color-surface-3: #1d2330;
+  --color-line: #262d3b;
+  --color-line-strong: #343c4e;
+  --color-ink: #e6e9ef;
+  --color-ink-muted: #a3abbb;
+  --color-ink-faint: #737c8f;
+  --color-accent: #8b7cf6;
+  --color-accent-strong: #a395ff;
+  --color-accent-soft: #241f45;
+  --color-ok: #3fb68b;
+  --color-ok-soft: #12291f;
+  --color-warn: #e3a440;
+  --color-warn-soft: #2e2412;
+  --color-bad: #ef6a6a;
+  --color-bad-soft: #33171a;
+  --color-info: #5aa7f0;
+  --color-info-soft: #132538;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+dialog::backdrop {
+  background: rgb(4 6 10 / 0.7);
+  backdrop-filter: blur(2px);
+}
+
+/* highlight.js token colors tuned for the dark surface */
+.hljs-keyword, .hljs-built_in, .hljs-type { color: #c4a7ff; }
+.hljs-string, .hljs-regexp { color: #9ad18b; }
+.hljs-number, .hljs-literal { color: #f0b072; }
+.hljs-comment { color: #6b7488; font-style: italic; }
+.hljs-title, .hljs-title.function_ { color: #7cc7ff; }
+.hljs-attr, .hljs-attribute, .hljs-property { color: #f3d27a; }
+.hljs-params { color: var(--color-ink); }
+.hljs-meta { color: #8f9bb3; }
+
+.scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 8px; }

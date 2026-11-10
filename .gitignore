@@ -1,0 +1,41 @@
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local data (SQLite DB holds saved integration credentials)
+data/*
+!data/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Project-specific
+docs/
+CLAUDE.md
