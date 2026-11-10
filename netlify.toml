@@ -1,0 +1,11 @@
+# Netlify: deploy the Next.js frontend as a static-data demo (no backend).
+[build]
+  base    = "frontend"          # install and build inside frontend/
+  command = "npm run build"
+  publish = ".next"             # relative to base → frontend/.next
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Answer every API call in the browser from dummy data (frontend/lib/demo).
+  NEXT_PUBLIC_DEMO_MODE = "true"
+  NEXT_TELEMETRY_DISABLED = "1"

@@ -4,6 +4,7 @@ import { ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button, ErrorState, Field, Input } from "@/components/ui";
 import { useAction } from "@/hooks/useApi";
 import { api } from "@/lib/api";
@@ -18,7 +19,8 @@ export default function LoginPage() {
     router.replace("/");
   });
   return (
-    <main className="grid min-h-dvh place-items-center px-4">
+    <main className="relative grid min-h-dvh place-items-center px-4">
+      <ThemeToggle className="absolute right-4 top-4" />
       <form className="w-full max-w-sm space-y-5 rounded-xl border border-line bg-surface p-6" autoComplete="off"
         onSubmit={(e) => { e.preventDefault(); void login.run(); }}>
         <div className="flex items-center gap-3">

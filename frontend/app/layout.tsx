@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { AppProviders } from "@/components/AppProviders";
 import { Shell } from "@/components/Shell";
+import { THEME_INIT_SCRIPT } from "@/components/ThemeToggle";
 
 import "./globals.css";
 
@@ -11,11 +12,20 @@ export const metadata: Metadata = {
   description: "Sentry-to-GitHub bug investigation, repair, validation and pull requests with human review.",
 };
 
-export const viewport: Viewport = { themeColor: "#0b0e14" };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f6f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0e14" },
+  ],
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // data-theme is set by THEME_INIT_SCRIPT before hydration, so the attribute differs from the server render.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
         <AppProviders>
           <Shell>{children}</Shell>

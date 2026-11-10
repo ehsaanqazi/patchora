@@ -21,6 +21,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
 import { useApp } from "@/components/AppProviders";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Badge } from "@/components/ui";
 import { api } from "@/lib/api";
 
@@ -59,13 +60,13 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 function Brand() {
   return (
-    <Link href="/" className="flex items-center gap-2.5 px-3">
-      <span className="grid size-8 place-items-center rounded-lg bg-accent-soft text-accent-strong">
+    <Link href="/" className="flex min-w-0 items-center gap-2.5 pl-3 pr-1">
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-strong">
         <ShieldCheck className="size-4.5" aria-hidden />
       </span>
       <span>
         <span className="block text-sm font-semibold text-ink">Patchora</span>
-        <span className="block text-[11px] text-ink-faint">Investigate · Repair · Review</span>
+        <span className="block truncate whitespace-nowrap text-[11px] text-ink-faint">Investigate · Repair · Review</span>
       </span>
     </Link>
   );
@@ -120,7 +121,10 @@ export function Shell({ children }: { children: ReactNode }) {
       </a>
       <aside className="sticky top-0 hidden h-dvh flex-col justify-between border-r border-line bg-surface py-5 lg:flex">
         <div className="space-y-6">
-          <Brand />
+          <div className="flex items-center justify-between gap-1 pr-2">
+            <Brand />
+            <ThemeToggle className="shrink-0" />
+          </div>
           <nav aria-label="Main" className="px-2"><NavLinks /></nav>
         </div>
         <StatusFooter />
@@ -128,10 +132,13 @@ export function Shell({ children }: { children: ReactNode }) {
 
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface/95 px-4 py-3 backdrop-blur lg:hidden">
         <Brand />
-        <button type="button" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open}
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button type="button" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open}
           className="rounded-md p-2 text-ink-muted hover:bg-surface-3" onClick={() => setOpen(!open)}>
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+          </button>
+        </div>
       </header>
       {open && (
         <div className="fixed inset-x-0 top-[57px] z-20 border-b border-line bg-surface p-3 lg:hidden">

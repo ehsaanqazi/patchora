@@ -30,6 +30,32 @@
   color-scheme: dark;
 }
 
+/* Light palette. Applied when the user picks light, or when the OS prefers light and the
+   user has not chosen. All utilities read these tokens, so every page follows automatically. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-canvas: #f5f6f9;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f3f7;
+  --color-surface-3: #e7eaf0;
+  --color-line: #e0e4eb;
+  --color-line-strong: #c9cfda;
+  --color-ink: #141821;
+  --color-ink-muted: #4a5264;
+  --color-ink-faint: #687183;
+  --color-accent: #6a58e6;
+  --color-accent-strong: #5444cc;
+  --color-accent-soft: #ebe8fd;
+  --color-ok: #127a55;
+  --color-ok-soft: #e1f3ea;
+  --color-warn: #9a5f06;
+  --color-warn-soft: #fbefd9;
+  --color-bad: #c93636;
+  --color-bad-soft: #fbe5e5;
+  --color-info: #2467b3;
+  --color-info-soft: #e1edfa;
+}
+
 html,
 body {
   background: var(--color-canvas);
@@ -65,6 +91,16 @@ dialog::backdrop {
 .hljs-attr, .hljs-attribute, .hljs-property { color: #f3d27a; }
 .hljs-params { color: var(--color-ink); }
 .hljs-meta { color: #8f9bb3; }
+
+/* highlight.js token colors for the light surface */
+:root[data-theme="light"] .hljs-keyword, :root[data-theme="light"] .hljs-built_in, :root[data-theme="light"] .hljs-type { color: #7c3aed; }
+:root[data-theme="light"] .hljs-string, :root[data-theme="light"] .hljs-regexp { color: #2f7a1f; }
+:root[data-theme="light"] .hljs-number, :root[data-theme="light"] .hljs-literal { color: #b45309; }
+:root[data-theme="light"] .hljs-comment { color: #6b7280; }
+:root[data-theme="light"] .hljs-title, :root[data-theme="light"] .hljs-title.function_ { color: #1d64b8; }
+:root[data-theme="light"] .hljs-attr, :root[data-theme="light"] .hljs-attribute, :root[data-theme="light"] .hljs-property { color: #8a5a00; }
+:root[data-theme="light"] .hljs-meta { color: #5b6476; }
+:root[data-theme="light"] dialog::backdrop { background: rgb(20 24 33 / 0.35); }
 
 .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar-thin::-webkit-scrollbar-thumb { background: var(--color-line-strong); border-radius: 8px; }
