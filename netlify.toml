@@ -1,11 +1,20 @@
-# Netlify: deploy the Next.js frontend as a static-data demo (no backend).
+# Netlify: deploy the Next.js frontend as a static demo with dummy data (no backend, no server).
 [build]
   base    = "frontend"          # install and build inside frontend/
   command = "npm run build"
-  publish = ".next"             # relative to base → frontend/.next
+  publish = "out"               # static export (output: "export" in demo mode) → frontend/out
 
 [build.environment]
   NODE_VERSION = "22"
-  # Answer every API call in the browser from dummy data (frontend/lib/demo).
+  # Static export + answer every API call in the browser from dummy data (frontend/lib/demo).
   NEXT_PUBLIC_DEMO_MODE = "true"
   NEXT_TELEMETRY_DISABLED = "1"
+
+# Security headers (next.config.ts headers() is not applied to static exports).
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
